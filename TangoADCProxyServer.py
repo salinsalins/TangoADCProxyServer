@@ -100,11 +100,11 @@ class TangoADCProxyServer(TangoServerPrototype.TangoServerPrototype):
     @command(dtype_in=str, dtype_out=str)
     def read_info(self, channel):
         if channel in self.selected:
-            return self.info[channel]
+            return str(self.info[channel])
 
     @command(dtype_in=str, dtype_out=str)
     def read_properties(self, channel):
-        return json.dumps(self.properties[channel], indent=4)
+        return str(self.properties[channel])
 
 
 if __name__ == "__main__":
