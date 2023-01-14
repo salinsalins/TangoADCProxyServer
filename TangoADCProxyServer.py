@@ -9,6 +9,7 @@ import sys
 import logging
 import time
 from math import isnan
+
 sys.path.append('../TangoUtils')
 import TangoServerPrototype
 # from ..TangoUtils import TangoServerPrototype
@@ -24,16 +25,17 @@ APPLICATION_VERSION = '1.0'
 
 a = StdStringVector()
 
+
 class TangoADCProxyServer(TangoServerPrototype.TangoServerPrototype):
     server_version_value = APPLICATION_VERSION
     server_name_value = APPLICATION_NAME_SHORT
 
-    # Shot_id = attribute(label="Shot number", dtype=int,
-    #                     display_level=DispLevel.OPERATOR,
-    #                     access=AttrWriteType.READ,
-    #                     unit="", format="%d",
-    #                     min_value=1,
-    #                     doc="Shot number")
+    channel_list = attribute(label="Channel list", dtype=[str],
+                             display_level=DispLevel.OPERATOR,
+                             access=AttrWriteType.READ,
+                             unit="", format="%d",
+                             min_value=1,
+                             doc="Channel list [int]")
 
     Shot_id = attribute(name="Shot_id", label="Shot_id", forwarded=True)
     Elapsed = attribute(name="Elapsed", label="Elapsed", forwarded=True)
@@ -53,14 +55,14 @@ class TangoADCProxyServer(TangoServerPrototype.TangoServerPrototype):
             self.attributes = [str(a) for a in attributes]
             db = self.device.get_device_db()
             self.properties = db.get_device_attribute_property(self.proxy_device_name, self.attributes)
-            self.selected = []
+            self.selected_channels = []
             for attr in self.attributes:
                 if attr.startswith("chany"):
                     # save_data and save_log flags
                     sdf = self.as_boolean(self.properties[attr].get("save_data", [False])[0])
                     slf = self.as_boolean(self.properties[attr].get("save_log", [False])[0])
                     if sdf or slf:
-                        self.selected.append(attr)
+                        self.selected_channels.append(attr)
                         self.data[attr] = {}
                         self.info[attr] = {}
 
@@ -71,26 +73,28 @@ class TangoADCProxyServer(TangoServerPrototype.TangoServerPrototype):
         super().delete_device()
         self.proxy_device = None
 
-    # def read_Shot_id(self, attr):
-    #     # if self.proxy_device is None:
-    #     #     attr.set_quality(AttrQuality.ATTR_INVALID)
-    #     #     self.warning("Root ADC is unreachable")
-    #     #     self.set_fault()
-    #     #     attr.set_value(-2)
-    #     #     attr.set_quality(AttrQuality.ATTR_INVALID)
-    #     #     return -2
-    #     # root_attr = self.proxy_device.read_attribute("Shot_id")
-    #     # attr = root_attr
-    #     # val = root_attr.value
-    #     # if val:
-    #     #     attr.set_quality(AttrQuality.ATTR_VALID)
-    #     #     self.set_running()
-    #     # else:
-    #     #     attr.set_quality(AttrQuality.ATTR_INVALID)
-    #     #     self.warning("Shot Number read error")
-    #     #     self.set_fault()
-    #     # return val
-    #     return 1
+    def read_channel_list(self):
+        self.selected_channels = []
+        self.read_attribute_list()
+        self.read_properties()
+        for attr in self.attributes:
+            if attr.startswith("chany"):
+                # save_data and save_log flags
+                sdf = self.as_boolean(self.properties[attr].get("save_data", [False])[0])
+                slf = self.as_boolean(self.properties[attr].get("save_log", [False])[0])
+                if sdf or slf:
+                    self.selected_channels.append(attr)
+        return self.selected_channels
+
+    def read_attribute_list(self):
+        attributes = self.proxy_device.get_attribute_list()
+        self.attributes = [str(a) for a in attributes]
+        return self.attributes
+
+    def read_properties(self):
+        db = self.device.get_device_db()
+        self.properties = db.get_device_attribute_property(self.proxy_device_name, self.attributes)
+        return self.properties
 
     @command(dtype_in=str, dtype_out=[float])
     def read_data(self, channel):
