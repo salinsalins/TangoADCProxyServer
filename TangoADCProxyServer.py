@@ -46,6 +46,10 @@ class TangoADCProxyServer(TangoServerPrototype.TangoServerPrototype):
         self.configure_tango_logging()
         self.time = time.time()
         self.set_state(DevState.INIT)
+        self.proxy_device = None
+        self.last_shot = -1
+        self.attributes = []
+        self.properties = {}
         self.data = {}
         self.info = {}
         self.proxy_device_name = self.config.get('proxy_device_name', 'binp/nbi/adc0')
@@ -65,9 +69,11 @@ class TangoADCProxyServer(TangoServerPrototype.TangoServerPrototype):
                         self.selected_channels.append(attr)
                         self.data[attr] = {}
                         self.info[attr] = {}
-
+            self.last_shot = self.Shot_id
+            self.set_running('Initialization completed')
         except:
-            self.proxy_device = None
+            self.set_fault('Initialization error')
+            self.error(f'Error initializing {self}')
 
     def delete_device(self):
         super().delete_device()
@@ -98,12 +104,12 @@ class TangoADCProxyServer(TangoServerPrototype.TangoServerPrototype):
 
     @command(dtype_in=str, dtype_out=[float])
     def read_data(self, channel):
-        if channel in self.selected:
+        if channel in self.selected_channels:
             return self.data[channel]
 
     @command(dtype_in=str, dtype_out=str)
     def read_info(self, channel):
-        if channel in self.selected:
+        if channel in self.selected_channels:
             return str(self.info[channel])
 
     @command(dtype_in=str, dtype_out=str)
