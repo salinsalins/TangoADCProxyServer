@@ -80,6 +80,8 @@ class TangoADCProxyServer(TangoServerPrototype):
                 slf = as_boolean(self.properties[attr].get("save_log", [False])[0])
                 if sdf or slf:
                     self.channels.append(attr)
+        self.read_data()
+        self.read_info()
         self.set_running()
         return self.channels
 
@@ -122,7 +124,7 @@ class TangoADCProxyServer(TangoServerPrototype):
     def read_data(self):
         for chan in self.channels:
             attr = self.self.proxy_device.read_attribute(chan)
-            avg = int(self.properties.get("save_avg", ['1'])[0])
+            avg = int(self.properties[chan].get("save_avg", ['1'])[0])
             avg_value = average_aray(attr.value, avg)
             attr.value = avg_value
             attr.avg = avg
