@@ -3,21 +3,13 @@
 """Adlink2204 ADC Proxy Tango Device server
 A. L. Sanin, started 13.01.2023
 """
-import json
 import sys
-
-import logging
 import time
-from math import isnan
-
 import numpy
-import tango
-
-from log_exception import log_exception
 
 sys.path.append('../TangoUtils')
+from log_exception import log_exception
 from TangoServerPrototype import TangoServerPrototype as TangoServerPrototype
-# from ..TangoUtils import TangoServerPrototype
 
 from tango import AttrQuality, AttrWriteType, DispLevel, DeviceProxy, StdStringVector, AttributeInfoListEx
 from tango import DevState
