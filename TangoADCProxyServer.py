@@ -3,6 +3,7 @@
 """Adlink2204 ADC Proxy Tango Device server
 A. L. Sanin, started 13.01.2023
 """
+import json
 import sys
 import time
 import numpy
@@ -149,7 +150,7 @@ class TangoADCProxyServer(TangoServerPrototype):
     @command(dtype_in=str, dtype_out=str)
     def read_channel_properties(self, channel):
         self.set_running()
-        return str(self.properties[channel])
+        return json.dumps(self.properties[channel])
 
     def read_data(self):
         for chan in self.channels:
