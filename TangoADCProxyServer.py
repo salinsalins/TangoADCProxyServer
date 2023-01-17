@@ -11,6 +11,9 @@ import time
 from math import isnan
 
 import numpy
+import tango
+
+from log_exception import log_exception
 
 sys.path.append('../TangoUtils')
 from TangoServerPrototype import TangoServerPrototype as TangoServerPrototype
@@ -35,12 +38,30 @@ class TangoADCProxyServer(TangoServerPrototype):
     channel_list = attribute(label="Channel list", dtype=[str],
                              display_level=DispLevel.OPERATOR,
                              access=AttrWriteType.READ,
-                             unit="", format="%d",
-                             min_value=1,
-                             doc="Channel list [str]")
+                             max_dim_x=256,
+                             unit="", format="%s",
+                             doc="Channel list")
 
-    Shot_id = attribute(name="Shot_id", label="Shot_id", forwarded=True)
-    Elapsed = attribute(name="Elapsed", label="Elapsed", forwarded=True)
+    Shot_id = attribute(label="Shot_id", dtype=int,
+                        display_level=DispLevel.OPERATOR,
+                        access=AttrWriteType.READ,
+                        unit="", format="%d",
+                        doc="Last shot number")
+
+    Elapsed = attribute(label="Elapsed", dtype=float,
+                        display_level=DispLevel.OPERATOR,
+                        access=AttrWriteType.READ,
+                        unit="s", format="%f",
+                        doc="Elapsed time from last shot in seconds")
+
+    # server_nama = attribute(label="server_nama", dtype=str,
+    #                         display_level=DispLevel.OPERATOR,
+    #                         access=AttrWriteType.READ,
+    #                         unit="", format="%s",
+    #                         doc="Server name")
+
+    # Shot_id = attribute(name="Shot_id", label="Shot_id", forwarded=True)
+    # Elapsed = attribute(name="Elapsed", label="Elapsed", forwarded=True)
 
     def init_device(self):
         super().init_device()
@@ -55,19 +76,34 @@ class TangoADCProxyServer(TangoServerPrototype):
         self.channels = []
         self.data = {}
         self.info = {}
-        self.proxy_device_name = self.config.get('proxy_device_name', 'binp/nbi/adc0')
+        self.proxy_device_name = self.config.get('root_device_name', 'binp/nbi/adc0')
         try:
             self.proxy_device = DeviceProxy(self.proxy_device_name)
             self.read_channel_list()
-            self.last_shot = self.Shot_id
+            self.last_shot = self.proxy_device.read_attribute('Shot_id').value
+            self.read_data()
+            self.read_info()
             self.set_running('Initialization completed')
         except:
+            log_exception('Initialization error')
             self.set_fault('Initialization error')
             self.error(f'Error initializing {self}')
 
     def delete_device(self):
         super().delete_device()
         self.proxy_device = None
+
+    # def read_server_nama(self):
+    #     # self.read_data()
+    #     # self.read_info()
+    #     self.set_running()
+    #     return str(self.channels)
+
+    def read_Shot_id(self):
+        return self.proxy_device.read_attribute('Shot_id').value
+
+    def read_Elapsed(self):
+        return self.proxy_device.read_attribute('Elapsed').value
 
     def read_channel_list(self):
         self.channels = []
@@ -80,8 +116,8 @@ class TangoADCProxyServer(TangoServerPrototype):
                 slf = as_boolean(self.properties[attr].get("save_log", [False])[0])
                 if sdf or slf:
                     self.channels.append(attr)
-        self.read_data()
-        self.read_info()
+        # self.read_data()
+        # self.read_info()
         self.set_running()
         return self.channels
 
@@ -92,27 +128,29 @@ class TangoADCProxyServer(TangoServerPrototype):
         return self.attributes
 
     def read_properties(self):
-        db = self.device.get_device_db()
+        db = self.proxy_device.get_device_db()
         self.properties = db.get_device_attribute_property(self.proxy_device_name, self.attributes)
         self.set_running()
         return self.properties
 
     @command(dtype_in=str, dtype_out=[float])
     def read_channel_data(self, channel):
-        if channel in self.selected_channels and channel in self.data:
+        if channel in self.channels and channel in self.data:
             self.set_running()
             return self.data[channel].value
         else:
+            self.logger.debug(f'No data for channel {channel}')
             self.set_fault(f'No data for channel {channel}')
-            return []
+            return numpy.zeros((1,))
 
     @command(dtype_in=str, dtype_out=str)
     def read_channel_info(self, channel):
-        if channel in self.selected_channels and channel in self.info:
-            a=AttributeInfoListEx()
+        if channel in self.channels and channel in self.info:
+            # a = AttributeInfoListEx()
             self.set_running()
             return str(self.info[channel])
         else:
+            self.logger.debug(f'No info for channel {channel}')
             self.set_fault(f'No info for channel {channel}')
             return ''
 
@@ -123,21 +161,22 @@ class TangoADCProxyServer(TangoServerPrototype):
 
     def read_data(self):
         for chan in self.channels:
-            attr = self.self.proxy_device.read_attribute(chan)
+            attr = self.proxy_device.read_attribute(chan)
             avg = int(self.properties[chan].get("save_avg", ['1'])[0])
             avg_value = average_aray(attr.value, avg)
             attr.value = avg_value
             attr.avg = avg
-            self.data[attr] = attr
-            attr = self.self.proxy_device.read_attribute(chan.replace('chany', 'chanx'))
+            self.data[chan] = attr
+            chanx = chan.replace('chany', 'chanx')
+            attr = self.proxy_device.read_attribute(chanx)
             avg_value = average_aray(attr.value, avg)
             attr.value = avg_value
             attr.avg = avg
-            self.data[attr] = attr
-        self.last_shot = self.Shot_id
+            self.data[chanx] = attr
+        self.last_shot = self.proxy_device.read_attribute('Shot_id').value
 
     def read_info(self):
-        self.info = self.self.proxy_device.get_attribute_config_ex(self.channels)
+        self.info = self.proxy_device.get_attribute_config_ex(self.channels)
 
 
 TRUE_VALUES = ('true', 'on', '1', 'y', 'yes')
@@ -166,16 +205,10 @@ def average_aray(arr, avg):
 
 
 def looping():
-    for dev in TangoServerPrototype.devices_list:
-        if dev.last_shot != dev.Shot_id:
-            dev.read_channel_list()
-            for chan in dev.channels:
-                attr = dev.self.proxy_device.read_attribute(chan)
-                avg = int(dev.properties.get("save_avg", ['1'])[0])
-                dev.data[attr] = average_aray(attr.value, avg)
-                attr = dev.self.proxy_device.read_attribute(chan.replace('chany', 'chanx'))
-                dev.data[attr] = average_aray(attr.value, avg)
-            dev.last_shot = dev.Shot_id
+    for dev in TangoServerPrototype.device_list:
+        if dev.last_shot != dev.proxy_device.read_attribute('Shot_id').value:
+            dev.read_data()
+            dev.read_info()
     time.sleep(1.0)
 
 
