@@ -128,7 +128,7 @@ class TangoADCProxyServer(TangoServerPrototype):
 
     @command(dtype_in=str, dtype_out=[float])
     def read_channel_data(self, channel):
-        if channel in self.channels and channel in self.data:
+        if channel in self.data:
             self.set_running()
             return self.data[channel].value
         else:
@@ -150,7 +150,7 @@ class TangoADCProxyServer(TangoServerPrototype):
     @command(dtype_in=str, dtype_out=str)
     def read_channel_properties(self, channel):
         self.set_running()
-        return json.dumps(self.properties[channel])
+        return str(self.properties[channel])
 
     def read_data(self):
         for chan in self.channels:
@@ -186,7 +186,7 @@ def as_boolean(value):
 
 
 def average_aray(arr, avg):
-    if avg > 1:
+    if avg > 1 and arr is not None:
         m = len(arr) // avg
         if m > 0:
             y = arr[:(m * avg)]
