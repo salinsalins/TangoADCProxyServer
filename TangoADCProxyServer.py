@@ -19,7 +19,7 @@ from tango.server import attribute, command
 ORGANIZATION_NAME = 'BINP'
 APPLICATION_NAME = 'Adlink2204 ADC Proxy Python Tango Server'
 APPLICATION_NAME_SHORT = 'TangoADCProxyServer'
-APPLICATION_VERSION = '1.0'
+APPLICATION_VERSION = '1.1'
 
 a = StdStringVector()
 
