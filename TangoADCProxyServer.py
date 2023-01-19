@@ -93,10 +93,22 @@ class TangoADCProxyServer(TangoServerPrototype):
     #     return str(self.channels)
 
     def read_Shot_id(self):
-        return self.proxy_device.read_attribute('Shot_id').value
+        attr = self.proxy_device.read_attribute('Shot_id')
+        if isinstance(attr, Exception):
+            raise attr
+        # qual = AttrQuality.ATTR_VALID
+        self.Shot_id.set_quality(attr.quality)
+        self.Shot_id.set_time(attr.time)
+        return attr.value
 
     def read_Elapsed(self):
-        return self.proxy_device.read_attribute('Elapsed').value
+        attr = self.proxy_device.read_attribute('Elapsed')
+        if isinstance(attr, Exception):
+            raise attr
+        # qual = AttrQuality.ATTR_VALID
+        self.Elapsed.set_quality(attr.quality)
+        self.Elapsed.set_time(attr.time)
+        return attr.value
 
     def read_channel_list(self):
         self.channels = []
@@ -116,7 +128,13 @@ class TangoADCProxyServer(TangoServerPrototype):
 
     def read_attribute_list(self):
         attributes = self.proxy_device.get_attribute_list()
+        if isinstance(attributes, Exception):
+            qual = AttrQuality.ATTR_INVALID
+            self.attribute_list.set_quality(qual)
+            raise attributes
         self.attributes = [str(a) for a in attributes]
+        qual = AttrQuality.ATTR_VALID
+        self.attribute_list.set_quality(qual)
         self.set_running()
         return self.attributes
 
