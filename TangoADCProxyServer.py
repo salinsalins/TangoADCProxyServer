@@ -120,7 +120,7 @@ class TangoADCProxyServer(TangoServerPrototype):
         attr = self.proxy_device.read_attribute('Elapsed')
         if isinstance(attr, Exception):
             raise attr
-        self.logger.debug('')
+        self.logger.debug('%s'%attr)
         self.Elapsed.set_quality(attr.quality)
         self.Elapsed.set_time(attr.time)
         self.logger.debug('')
