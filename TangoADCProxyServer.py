@@ -109,7 +109,6 @@ class TangoADCProxyServer(TangoServerPrototype):
             raise attr
         self.Elapsed.set_quality(attr.quality)
         self.Elapsed.set_time(attr.time)
-        self.last_elapsed = attr.value
         return attr.value
 
     def read_channel_list(self):
@@ -182,6 +181,9 @@ class TangoADCProxyServer(TangoServerPrototype):
         return str(self.properties[channel]).replace("'", '"')
 
     def read_data(self):
+        if self.root_data_reading:
+            self.logger.info('Root device data reading is in progress')
+            return
         self.data_reading = True
         for chan in self.channels:
             attr = self.proxy_device.read_attribute(chan)
@@ -230,9 +232,15 @@ def average_aray(arr, avg):
 
 def looping():
     for dev in TangoServerPrototype.device_list:
+        if dev.last_elapsed < 0.0:
+            dev.last_elapsed = dev.proxy_device.read_attribute('Elapsed').value
+        if dev.last_elapsed > dev.proxy_device.read_attribute('Elapsed').value:
+            dev.root_data_reding = True
         if dev.last_shot != dev.proxy_device.read_attribute('Shot_id').value:
+            dev.root_data_reding = False
             dev.read_data()
             dev.read_info()
+            dev.last_elapsed = -1.0
     time.sleep(1.0)
 
 
