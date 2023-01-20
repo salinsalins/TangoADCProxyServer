@@ -112,21 +112,14 @@ class TangoADCProxyServer(TangoServerPrototype):
         if isinstance(attr, Exception):
             raise attr
         self.Shot_id.set_quality(attr.quality)
-        self.Shot_id.set_time(attr.time)
         return attr.value
 
     def read_Elapsed(self):
-        self.logger.debug('enter')
         attr = self.proxy_device.read_attribute('Elapsed')
         if isinstance(attr, Exception):
             raise attr
-        self.logger.debug('%s'%attr)
         self.Elapsed.set_value(attr.value)
-        self.logger.debug('%s'%attr.quality)
         self.Elapsed.set_quality(attr.quality)
-        self.logger.debug('%s'%attr.time)
-        #self.Elapsed.set_time(attr.time)
-        self.logger.debug('exit')
         return attr.value
 
     def read_channel_list(self):
