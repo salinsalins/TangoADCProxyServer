@@ -136,6 +136,8 @@ class TangoADCProxyServer(TangoServerPrototype):
                     self.channels.append(attr)
         # self.read_data()
         # self.read_info()
+        qual = AttrQuality.ATTR_VALID
+        self.channel_list.set_quality(qual)
         self.set_running()
         return self.channels
 
@@ -146,8 +148,6 @@ class TangoADCProxyServer(TangoServerPrototype):
             self.attribute_list.set_quality(qual)
             raise attributes
         self.attributes = [str(a) for a in attributes]
-        qual = AttrQuality.ATTR_VALID
-        self.attribute_list.set_quality(qual)
         self.set_running()
         return self.attributes
 
