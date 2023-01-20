@@ -116,11 +116,14 @@ class TangoADCProxyServer(TangoServerPrototype):
         return attr.value
 
     def read_Elapsed(self):
+        self.logger.debug('')
         attr = self.proxy_device.read_attribute('Elapsed')
         if isinstance(attr, Exception):
             raise attr
+        self.logger.debug('')
         self.Elapsed.set_quality(attr.quality)
         self.Elapsed.set_time(attr.time)
+        self.logger.debug('')
         return attr.value
 
     def read_channel_list(self):
