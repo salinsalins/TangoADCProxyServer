@@ -151,10 +151,10 @@ class TangoADCProxyServer(TangoServerPrototype):
         self.set_running()
         return self.attributes
 
-    def read_redaing(self):
+    def read_reading(self):
         return self.data_reading
 
-    def read_root_redaing(self):
+    def read_root_reading(self):
         return self.root_data_reading
 
     def read_properties(self):
@@ -203,6 +203,7 @@ class TangoADCProxyServer(TangoServerPrototype):
             self.logger.info('Root device data reading is in progress')
             return
         self.data_reading = True
+        self.set_status('Data reading is in progress')
         for chan in self.channels:
             attr = self.proxy_device.read_attribute(chan)
             avg = int(self.properties[chan].get("save_avg", ['1'])[0])
@@ -218,6 +219,7 @@ class TangoADCProxyServer(TangoServerPrototype):
             self.data[chanx] = attr
         self.last_shot = self.proxy_device.read_attribute('Shot_id').value
         self.data_reading = False
+        self.set_status('Data reading finished')
 
     def read_info(self):
         self.info = self.proxy_device.get_attribute_config_ex(self.channels)
