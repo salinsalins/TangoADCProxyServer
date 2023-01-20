@@ -101,12 +101,6 @@ class TangoADCProxyServer(TangoServerPrototype):
         super().delete_device()
         self.proxy_device = None
 
-    # def read_server_nama(self):
-    #     # self.read_data()
-    #     # self.read_info()
-    #     self.set_running()
-    #     return str(self.channels)
-
     def read_Shot_id(self):
         attr = self.proxy_device.read_attribute('Shot_id')
         if isinstance(attr, Exception):
