@@ -123,6 +123,7 @@ class TangoADCProxyServer(TangoServerPrototype):
         self.logger.debug('%s'%attr)
         self.logger.debug('%s'%attr.quality)
         self.Elapsed.set_quality(attr.quality)
+        self.logger.debug('%s'%attr.time)
         self.Elapsed.set_time(attr.time)
         self.logger.debug('')
         return attr.value
