@@ -50,13 +50,13 @@ class TangoADCProxyServer(TangoServerPrototype):
     reading = attribute(label="data_reading", dtype=bool,
                         display_level=DispLevel.OPERATOR,
                         access=AttrWriteType.READ,
-                        unit="", format="%s",
+                        unit="",
                         doc="Data reding in progress flag")
 
     root_reading = attribute(label="root_data_reading", dtype=bool,
                              display_level=DispLevel.OPERATOR,
                              access=AttrWriteType.READ,
-                             unit="", format="%s",
+                             unit="",
                              doc="Root device data reding in progress flag")
 
     # server_nama = attribute(label="server_nama", dtype=str,
