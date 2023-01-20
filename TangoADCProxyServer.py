@@ -252,8 +252,10 @@ def average_aray(arr, avg):
 
 def looping():
     for dev in TangoServerPrototype.device_list:
-        if dev.last_elapsed > dev.proxy_device.read_attribute('Elapsed').value:
+        ev = dev.proxy_device.read_attribute('Elapsed').value
+        if dev.last_elapsed > ev:
             dev.root_data_reding = True
+        dev.last_elapsed = ev
         if dev.last_shot != dev.proxy_device.read_attribute('Shot_id').value:
             dev.root_data_reding = False
             dev.read_data()
