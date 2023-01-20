@@ -111,6 +111,9 @@ class TangoADCProxyServer(TangoServerPrototype):
         attr = self.proxy_device.read_attribute('Shot_id')
         if isinstance(attr, Exception):
             raise attr
+        if self.data_reading:
+            return self.last_shot
+        self.last_shot = attr.value
         self.Shot_id.set_quality(attr.quality)
         return attr.value
 
@@ -253,10 +256,10 @@ def looping():
     for dev in TangoServerPrototype.device_list:
         ev = dev.proxy_device.read_attribute('Elapsed').value
         if dev.last_elapsed > ev:
-            dev.root_data_reding = True
+            dev.root_data_reading = True
         dev.last_elapsed = ev
         if dev.last_shot != dev.proxy_device.read_attribute('Shot_id').value:
-            dev.root_data_reding = False
+            dev.root_data_reading = False
             dev.read_data()
             dev.read_info()
             dev.last_elapsed = dev.proxy_device.read_attribute('Elapsed').value
