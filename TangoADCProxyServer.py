@@ -47,6 +47,18 @@ class TangoADCProxyServer(TangoServerPrototype):
                         unit="s", format="%f",
                         doc="Elapsed time from last shot in seconds")
 
+    reading = attribute(label="data_reading", dtype=bool,
+                        display_level=DispLevel.OPERATOR,
+                        access=AttrWriteType.READ,
+                        unit="", format="%s",
+                        doc="Data reding in progress flag")
+
+    root_reading = attribute(label="root_data_reading", dtype=bool,
+                             display_level=DispLevel.OPERATOR,
+                             access=AttrWriteType.READ,
+                             unit="", format="%s",
+                             doc="Root device data reding in progress flag")
+
     # server_nama = attribute(label="server_nama", dtype=str,
     #                         display_level=DispLevel.OPERATOR,
     #                         access=AttrWriteType.READ,
@@ -139,6 +151,12 @@ class TangoADCProxyServer(TangoServerPrototype):
         self.set_running()
         return self.attributes
 
+    def read_redaing(self):
+        return self.data_reading
+
+    def read_root_redaing(self):
+        return self.root_data_reading
+
     def read_properties(self):
         db = self.proxy_device.get_device_db()
         self.properties = db.get_device_attribute_property(self.proxy_device_name, self.attributes)
@@ -150,7 +168,7 @@ class TangoADCProxyServer(TangoServerPrototype):
         if self.data_reading:
             self.logger.debug('Data reading is in progress')
             self.set_status('Data reading is in progress')
-            result =  numpy.zeros((1,))
+            result = numpy.zeros((1,))
             result[0] = -2.0
             return result
         if channel in self.data:
@@ -232,15 +250,13 @@ def average_aray(arr, avg):
 
 def looping():
     for dev in TangoServerPrototype.device_list:
-        if dev.last_elapsed < 0.0:
-            dev.last_elapsed = dev.proxy_device.read_attribute('Elapsed').value
         if dev.last_elapsed > dev.proxy_device.read_attribute('Elapsed').value:
             dev.root_data_reding = True
         if dev.last_shot != dev.proxy_device.read_attribute('Shot_id').value:
             dev.root_data_reding = False
             dev.read_data()
             dev.read_info()
-            dev.last_elapsed = -1.0
+            dev.last_elapsed = dev.proxy_device.read_attribute('Elapsed').value
     time.sleep(1.0)
 
 
