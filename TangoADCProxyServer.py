@@ -121,6 +121,7 @@ class TangoADCProxyServer(TangoServerPrototype):
         if isinstance(attr, Exception):
             raise attr
         self.logger.debug('%s'%attr)
+        self.logger.debug('%s'%attr.quality)
         self.Elapsed.set_quality(attr.quality)
         self.Elapsed.set_time(attr.time)
         self.logger.debug('')
