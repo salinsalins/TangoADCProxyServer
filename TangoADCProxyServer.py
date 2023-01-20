@@ -50,13 +50,13 @@ class TangoADCProxyServer(TangoServerPrototype):
     reading = attribute(label="data_reading", dtype=bool,
                         display_level=DispLevel.OPERATOR,
                         access=AttrWriteType.READ,
-                        unit="",
+                        unit="", format="%s",
                         doc="Data reding in progress flag")
 
     root_reading = attribute(label="root_data_reading", dtype=bool,
                              display_level=DispLevel.OPERATOR,
                              access=AttrWriteType.READ,
-                             unit="",
+                             unit="", format="%s",
                              doc="Root device data reding in progress flag")
 
     # server_nama = attribute(label="server_nama", dtype=str,
@@ -107,7 +107,6 @@ class TangoADCProxyServer(TangoServerPrototype):
             raise attr
         if self.data_reading:
             return self.last_shot
-        self.last_shot = attr.value
         self.Shot_id.set_quality(attr.quality)
         return attr.value
 
@@ -200,6 +199,7 @@ class TangoADCProxyServer(TangoServerPrototype):
             return
         self.data_reading = True
         self.set_status('Data reading is in progress')
+        self.logger.debug('data reading strated')
         for chan in self.channels:
             attr = self.proxy_device.read_attribute(chan)
             avg = int(self.properties[chan].get("save_avg", ['1'])[0])
@@ -216,6 +216,7 @@ class TangoADCProxyServer(TangoServerPrototype):
         self.last_shot = self.proxy_device.read_attribute('Shot_id').value
         self.data_reading = False
         self.set_status('Data reading finished')
+        self.logger.debug('data reading finished')
 
     def read_info(self):
         self.info = self.proxy_device.get_attribute_config_ex(self.channels)
@@ -251,12 +252,17 @@ def looping():
         ev = dev.proxy_device.read_attribute('Elapsed').value
         if dev.last_elapsed > ev:
             dev.root_data_reading = True
+            dev.logger.debug('Root data reading 1 %s' % dev.root_data_reading)
         dev.last_elapsed = ev
-        if dev.last_shot != dev.proxy_device.read_attribute('Shot_id').value:
+        ls = dev.proxy_device.read_attribute('Shot_id').value
+        if dev.last_shot != ls:
             dev.root_data_reading = False
+            dev.logger.debug('Root data reading 2 %s'%dev.root_data_reading)
             dev.read_data()
             dev.read_info()
             dev.last_elapsed = dev.proxy_device.read_attribute('Elapsed').value
+            dev.last_shot = ls
+    dev.logger.debug('Root data reading %s' % dev.root_data_reading)
     time.sleep(1.0)
 
 
