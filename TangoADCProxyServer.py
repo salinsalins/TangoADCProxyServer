@@ -6,7 +6,7 @@ A. L. Sanin, started 13.01.2023
 import json
 import sys
 import time
-from threading import Lock
+from threading import Lock, RLock
 
 import numpy
 
@@ -61,15 +61,6 @@ class TangoADCProxyServer(TangoServerPrototype):
                              unit="", format="%s",
                              doc="Root device data reding in progress flag")
 
-    # server_nama = attribute(label="server_nama", dtype=str,
-    #                         display_level=DispLevel.OPERATOR,
-    #                         access=AttrWriteType.READ,
-    #                         unit="", format="%s",
-    #                         doc="Server name")
-
-    # Shot_id = attribute(name="Shot_id", label="Shot_id", forwarded=True)
-    # Elapsed = attribute(name="Elapsed", label="Elapsed", forwarded=True)
-
     def init_device(self):
         super().init_device()
         self.debug('Initialization')
@@ -84,7 +75,7 @@ class TangoADCProxyServer(TangoServerPrototype):
         self.channels = []
         self.data = {}
         self.info = {}
-        self.lock = Lock()
+        self.lock = RLock()
         self.proxy_device_name = self.config.get('root_device_name', 'binp/nbi/adc0')
         self.data_reading = False
         self.root_data_reading = False
@@ -256,17 +247,18 @@ def average_aray(arr, avg):
 
 def looping():
     for dev in TangoServerPrototype.device_list:
-        ev = dev.proxy_device.read_attribute('Elapsed').value
-        if dev.last_elapsed > ev:
-            dev.root_data_reading = True
-        dev.last_elapsed = ev
-        ls = dev.proxy_device.read_attribute('Shot_id').value
-        if dev.last_shot != ls:
-            dev.root_data_reading = False
-            dev.read_data()
-            dev.read_info()
-            dev.last_elapsed = dev.proxy_device.read_attribute('Elapsed').value
-            dev.last_shot = ls
+        with dev.lock:
+            ev = dev.Elapsed
+            if dev.last_elapsed > ev:
+                dev.root_data_reading = True
+            dev.last_elapsed = ev
+            ls = dev.Shot_id
+            if dev.last_shot != ls:
+                dev.root_data_reading = False
+                dev.read_data()
+                dev.read_info()
+                dev.last_elapsed = dev.Elapsed
+                dev.last_shot = ls
     time.sleep(1.0)
 
 
