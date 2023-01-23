@@ -6,6 +6,8 @@ A. L. Sanin, started 13.01.2023
 import json
 import sys
 import time
+from threading import Lock
+
 import numpy
 
 sys.path.append('../TangoUtils')
@@ -82,6 +84,7 @@ class TangoADCProxyServer(TangoServerPrototype):
         self.channels = []
         self.data = {}
         self.info = {}
+        self.lock = Lock()
         self.proxy_device_name = self.config.get('root_device_name', 'binp/nbi/adc0')
         self.data_reading = False
         self.root_data_reading = False
@@ -160,63 +163,67 @@ class TangoADCProxyServer(TangoServerPrototype):
 
     @command(dtype_in=str, dtype_out=[float])
     def read_channel_data(self, channel):
-        if self.data_reading:
-            self.logger.debug('Data reading is in progress')
-            self.set_status('Data reading is in progress')
-            result = numpy.zeros((1,))
-            result[0] = -2.0
-            return result
-        if channel in self.data:
-            self.set_running()
-            return self.data[channel].value
-        else:
-            self.logger.debug(f'No data for channel {channel}')
-            self.set_fault(f'No data for channel {channel}')
-            return numpy.zeros((1,))
+        with self.lock:
+            if self.data_reading:
+                self.logger.debug('Data reading is in progress')
+                self.set_status('Data reading is in progress')
+                result = numpy.zeros((1,))
+                result[0] = -2.0
+                return result
+            if channel in self.data:
+                self.set_running(f'Read data for channel {channel}')
+                return self.data[channel].value
+            else:
+                self.logger.debug(f'No data for channel {channel}')
+                self.set_fault(f'No data for channel {channel}')
+                return numpy.zeros((1,))
 
     @command(dtype_in=str, dtype_out=str)
     def read_channel_info(self, channel):
-        if self.data_reading:
-            self.logger.debug('Data reading is in progress')
-            self.set_status('Data reading is in progress')
-            return ''
-        if channel in self.channels and channel in self.info:
-            self.set_running()
+        if channel in self.info:
+            self.set_running(f'Read info for channel {channel}')
             return str(self.info[channel]).replace("'", '"')
         else:
             self.logger.debug(f'No info for channel {channel}')
-            self.set_fault(f'No info for channel {channel}')
+            self.set_status(f'No info for channel {channel}')
             return ''
 
     @command(dtype_in=str, dtype_out=str)
     def read_channel_properties(self, channel):
-        self.set_running()
-        return str(self.properties[channel]).replace("'", '"')
+        if channel in self.properties:
+            self.set_running(f'Read prop for channel {channel}')
+            return str(self.properties[channel]).replace("'", '"')
+        else:
+            self.logger.debug(f'No prop for channel {channel}')
+            self.set_status(f'No prop for channel {channel}')
+        return ''
 
     def read_data(self):
-        if self.root_data_reading:
-            self.logger.info('Root device data reading is in progress')
-            return
-        self.data_reading = True
-        self.set_status('Data reading is in progress')
-        self.logger.debug('data reading strated')
-        for chan in self.channels:
-            attr = self.proxy_device.read_attribute(chan)
-            avg = int(self.properties[chan].get("save_avg", ['1'])[0])
-            avg_value = average_aray(attr.value, avg)
-            attr.value = avg_value
-            attr.avg = avg
-            self.data[chan] = attr
-            chanx = chan.replace('chany', 'chanx')
-            attr = self.proxy_device.read_attribute(chanx)
-            avg_value = average_aray(attr.value, avg)
-            attr.value = avg_value
-            attr.avg = avg
-            self.data[chanx] = attr
-        self.last_shot = self.proxy_device.read_attribute('Shot_id').value
-        self.data_reading = False
-        self.set_status('Data reading finished')
-        self.logger.debug('data reading finished')
+        with self.lock:
+            if self.root_data_reading:
+                self.logger.info('Root device data reading is in progress')
+                self.set_status('Root data reading is in progress')
+                return
+            self.data_reading = True
+            self.set_status('Data reading is in progress')
+            self.logger.debug('Data reading started')
+            for chan in self.channels:
+                attr = self.proxy_device.read_attribute(chan)
+                avg = int(self.properties[chan].get("save_avg", ['1'])[0])
+                avg_value = average_aray(attr.value, avg)
+                attr.value = avg_value
+                attr.avg = avg
+                self.data[chan] = attr
+                chanx = chan.replace('chany', 'chanx')
+                attr = self.proxy_device.read_attribute(chanx)
+                avg_value = average_aray(attr.value, avg)
+                attr.value = avg_value
+                attr.avg = avg
+                self.data[chanx] = attr
+            self.last_shot = self.proxy_device.read_attribute('Shot_id').value
+            self.data_reading = False
+            self.set_running('Data reading finished')
+            self.logger.debug('Data reading finished')
 
     def read_info(self):
         self.info = self.proxy_device.get_attribute_config_ex(self.channels)
@@ -252,17 +259,14 @@ def looping():
         ev = dev.proxy_device.read_attribute('Elapsed').value
         if dev.last_elapsed > ev:
             dev.root_data_reading = True
-            dev.logger.debug('Root data reading 1 %s' % dev.root_data_reading)
         dev.last_elapsed = ev
         ls = dev.proxy_device.read_attribute('Shot_id').value
         if dev.last_shot != ls:
             dev.root_data_reading = False
-            dev.logger.debug('Root data reading 2 %s'%dev.root_data_reading)
             dev.read_data()
             dev.read_info()
             dev.last_elapsed = dev.proxy_device.read_attribute('Elapsed').value
             dev.last_shot = ls
-    dev.logger.debug('Root data reading %s' % dev.root_data_reading)
     time.sleep(1.0)
 
 
