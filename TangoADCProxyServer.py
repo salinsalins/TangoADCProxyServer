@@ -86,6 +86,8 @@ class TangoADCProxyServer(TangoServerPrototype):
             self.read_data()
             self.read_info()
             self.set_running('Initialization completed')
+        except KeyboardInterrupt:
+            raise
         except:
             log_exception('Initialization error')
             self.set_fault('Initialization error')
