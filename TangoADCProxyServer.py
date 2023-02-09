@@ -63,11 +63,11 @@ class TangoADCProxyServer(TangoServerPrototype):
 
     def init_device(self):
         super().init_device()
-        self.debug('Initialization')
+        self.logger.debug('Initialization')
         self.configure_tango_logging()
         self.time = time.time()
         self.set_state(DevState.INIT)
-        self.proxy_device = None
+        self.root_device = None
         self.last_shot = -1
         self.last_elapsed = -1
         self.attributes = []
@@ -76,29 +76,28 @@ class TangoADCProxyServer(TangoServerPrototype):
         self.data = {}
         self.info = {}
         self.lock = RLock()
-        self.proxy_device_name = self.config.get('root_device_name', 'binp/nbi/adc0')
+        self.root_device_name = self.config.get('root_device_name', 'binp/nbi/adc0')
         self.data_reading = False
         self.root_data_reading = False
         try:
-            self.proxy_device = DeviceProxy(self.proxy_device_name)
+            self.root_device = DeviceProxy(self.root_device_name)
             self.read_channel_list()
-            self.last_shot = self.proxy_device.read_attribute('Shot_id').value
+            self.last_shot = self.root_device.read_attribute('Shot_id').value
             self.read_data()
             self.read_info()
             self.set_running('Initialization completed')
         except KeyboardInterrupt:
             raise
         except:
-            log_exception('Initialization error')
+            log_exception(f'Error initializing {self}')
             self.set_fault('Initialization error')
-            self.error(f'Error initializing {self}')
 
     def delete_device(self):
         super().delete_device()
-        self.proxy_device = None
+        self.root_device = None
 
     def read_Shot_id(self):
-        attr = self.proxy_device.read_attribute('Shot_id')
+        attr = self.root_device.read_attribute('Shot_id')
         if isinstance(attr, Exception):
             raise attr
         if self.data_reading:
@@ -107,7 +106,7 @@ class TangoADCProxyServer(TangoServerPrototype):
         return attr.value
 
     def read_Elapsed(self):
-        attr = self.proxy_device.read_attribute('Elapsed')
+        attr = self.root_device.read_attribute('Elapsed')
         if isinstance(attr, Exception):
             raise attr
         self.Elapsed.set_value(attr.value)
@@ -133,7 +132,7 @@ class TangoADCProxyServer(TangoServerPrototype):
         return self.channels
 
     def read_attribute_list(self):
-        attributes = self.proxy_device.get_attribute_list()
+        attributes = self.root_device.get_attribute_list()
         if isinstance(attributes, Exception):
             qual = AttrQuality.ATTR_INVALID
             self.attribute_list.set_quality(qual)
@@ -149,8 +148,8 @@ class TangoADCProxyServer(TangoServerPrototype):
         return self.root_data_reading
 
     def read_properties(self):
-        db = self.proxy_device.get_device_db()
-        self.properties = db.get_device_attribute_property(self.proxy_device_name, self.attributes)
+        db = self.root_device.get_device_db()
+        self.properties = db.get_device_attribute_property(self.root_device_name, self.attributes)
         self.set_running()
         return self.properties
 
@@ -201,25 +200,25 @@ class TangoADCProxyServer(TangoServerPrototype):
             self.set_status('Data reading is in progress')
             self.logger.debug('Data reading started')
             for chan in self.channels:
-                attr = self.proxy_device.read_attribute(chan)
+                attr = self.root_device.read_attribute(chan)
                 avg = int(self.properties[chan].get("save_avg", ['1'])[0])
                 avg_value = average_aray(attr.value, avg)
                 attr.value = avg_value
                 attr.avg = avg
                 self.data[chan] = attr
                 chanx = chan.replace('chany', 'chanx')
-                attr = self.proxy_device.read_attribute(chanx)
+                attr = self.root_device.read_attribute(chanx)
                 avg_value = average_aray(attr.value, avg)
                 attr.value = avg_value
                 attr.avg = avg
                 self.data[chanx] = attr
-            self.last_shot = self.proxy_device.read_attribute('Shot_id').value
+            self.last_shot = self.root_device.read_attribute('Shot_id').value
             self.data_reading = False
             self.set_running('Data reading finished')
             self.logger.debug('Data reading finished')
 
     def read_info(self):
-        self.info = self.proxy_device.get_attribute_config_ex(self.channels)
+        self.info = self.root_device.get_attribute_config_ex(self.channels)
 
 
 TRUE_VALUES = ('true', 'on', '1', 'y', 'yes')
